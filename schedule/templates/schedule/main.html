@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<a href="{% url 'schedule:all_groups_schedule' %}" class="btn btn-info">
+    📊 Общее расписание
+</a>
+<div class="row justify-content-center fade-in">
+    <div class="col-lg-10">
+        <div class="text-center mb-5">
+            <h1 class="mb-3 display-4 fw-bold text-primary">Система Расписания</h1>
+            <p class="lead text-muted fs-5">Выберите группу или преподавателя для просмотра расписания</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card main-card h-100">
+                    <div class="card-header schedule-header text-white">
+                        <h5 class="card-title mb-0 fs-4">📚 Учебные группы</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if groups %}
+                            <div class="list-group list-group-flush">
+                                {% for group in groups %}
+                                <a href="{% url 'schedule:group_schedule' group.id %}"
+                                   class="list-group-item list-group-item-action py-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong class="fs-5 text-dark">{{ group.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ group.specialization.name }}</small>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">Курс {{ group.course }}</span>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p class="text-muted mb-2 fs-6">Группы не найдены</p>
+                                <small class="text-muted">Добавьте группы через админку</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card main-card h-100">
+                    <div class="card-header schedule-header text-white">
+                        <h5 class="card-title mb-0 fs-4">👨‍🏫 Преподаватели</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if teachers %}
+                            <div class="list-group list-group-flush">
+                                {% for teacher in teachers %}
+                                <a href="{% url 'schedule:teacher_schedule' teacher.id %}"
+                                   class="list-group-item list-group-item-action py-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong class="fs-5 text-dark">{{ teacher.get_full_name|default:teacher.username }}</strong>
+                                            {% if teacher.teacherprofile.department %}
+                                            <br>
+                                            <small class="text-muted">{{ teacher.teacherprofile.department.name }}</small>
+                                            {% endif %}
+                                        </div>
+                                        {% if teacher.teacherprofile.academic_degree %}
+                                        <span class="badge bg-success rounded-pill">👨‍🎓</span>
+                                        {% endif %}
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p class="text-muted mb-2 fs-6">Преподаватели не найдены</p>
+                                <small class="text-muted">Добавьте преподавателей через админку</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if current_week %}
+        <div class="alert alert-info mt-5 schedule-card">
+            <div class="d-flex align-items-center">
+                <span class="fs-3 me-3">📅</span>
+                <div>
+                    <strong class="fs-5">Текущая учебная неделя:</strong>
+                    <span class="fs-5">Неделя {{ current_week.week_number }}</span>
+                    <br>
+                    <small class="text-muted">{{ current_week.start_date|date:"d.m.Y" }} - {{ current_week.end_date|date:"d.m.Y" }}</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

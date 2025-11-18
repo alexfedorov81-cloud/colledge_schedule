@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Расписание преподавателя {{ teacher.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12">
+        <!-- Навигация по неделям -->
+        <div class="card schedule-card mb-4">
+            <div class="card-header schedule-header bg-primary text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="mb-0">
+                            📅 
+                            {% if current_week %}
+                                Неделя {{ current_week.week_number }} 
+                                {% if current_week_by_date and current_week == current_week_by_date %}
+                                    <span class="badge bg-success">Текущая по дате</span>
+                                {% endif %}
+                            {% else %}
+                                Текущая неделя
+                            {% endif %}
+                            {% if week_start and week_end %}
+                                ({{ week_start|date:"d.m.Y" }} - {{ week_end|date:"d.m.Y" }})
+                            {% endif %}
+                        </h5>
+                        {% if current_week_by_date and current_week != current_week_by_date %}
+                        <small class="text-warning">
+                            ⚠️ Сейчас актуальна неделя {{ current_week_by_date.week_number }} 
+                            ({{ current_week_by_date.start_date|date:"d.m.Y" }} - {{ current_week_by_date.end_date|date:"d.m.Y" }})
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group">
+                            {% if has_previous %}
+                            <a href="{% url 'schedule:teacher_schedule_week' teacher.id week_offset|add:'-1' %}" 
+                               class="btn btn-sm btn-outline-light">
+                                ← Предыдущая неделя
+                            </a>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-light" disabled>
+                                ← Предыдущая неделя
+                            </button>
+                            {% endif %}
+                            
+                            <!-- Кнопка перехода к текущей неделе по дате -->
+                            {% if current_week_by_date %}
+                            <a href="{% url 'schedule:teacher_schedule' teacher.id %}" 
+                               class="btn btn-sm btn-outline-warning">
+                                🎯 К текущей дате
+                            </a>
+                            {% else %}
+                            <a href="{% url 'schedule:teacher_schedule' teacher.id %}" 
+                               class="btn btn-sm btn-outline-light">
+                                Текущая неделя
+                            </a>
+                            {% endif %}
+                            
+                            {% if has_next %}
+                            <a href="{% url 'schedule:teacher_schedule_week' teacher.id week_offset|add:'1' %}" 
+                               class="btn btn-sm btn-outline-light">
+                                Следующая неделя →
+                            </a>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-light" disabled>
+                                Следующая неделя →
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Расписание: {{ teacher.get_full_name|default:teacher.username }}</h1>
+            <a href="{% url 'main_page' %}" class="btn btn-outline-primary btn-custom">← Назад к списку</a>
+        </div>
+        
+        {% if teacher.teacherprofile.department %}
+        <p class="lead">Кафедра: {{ teacher.teacherprofile.department.name }}</p>
+        {% endif %}
+        
+        {% if teacher.teacherprofile.academic_degree %}
+        <p>Ученая степень: {{ teacher.teacherprofile.academic_degree }}</p>
+        {% endif %}
+        
+        {% if total_weeks %}
+        <p>Показана неделя {{ week_offset|add:"1" }} из {{ total_weeks }}</p>
+        {% endif %}
+
+        <!-- Быстрый переход по всем неделям-->
+        {% if available_weeks %}
+        <div class="card schedule-card mb-4">
+            <div class="card-header schedule-header text-white">
+                <h6 class="mb-0 fs-5">📋 Быстрый переход по неделям</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    {% for week in available_weeks %}
+
+                        <a href="{% url 'schedule:teacher_schedule_week' teacher.id forloop.counter0 %}"
+                           class="btn btn-sm {% if week == current_week %}btn-primary{% elif week == current_week_by_date %}btn-warning{% else %}btn-outline-primary{% endif %} week-nav-btn">
+                        Неделя {{ week.week_number }}
+                        {% if week == current_week_by_date %}
+                        <span class="badge bg-light text-dark ms-1">●</span>
+                        {% endif %}
+                        </a>
+
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Календарь недель
+        <div class="card schedule-card mb-4">
+            <div class="card-header schedule-header bg-success text-white">
+                <h6 class="mb-0">🗓️ Календарь семестра</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Неделя</th>
+                                <th>Даты</th>
+                                <th>Статус</th>
+                                <th>Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for week in available_weeks %}
+                            <tr class="{% if week == current_week %}table-primary{% elif week == current_week_by_date %}table-warning{% endif %}">
+                                <td class="fw-bold">Неделя {{ week.week_number }}</td>
+                                <td>{{ week.start_date|date:"d.m.Y" }} - {{ week.end_date|date:"d.m.Y" }}</td>
+                                <td>
+                                    {% if week == current_week_by_date %}
+                                        <span class="badge bg-warning">Текущая по дате</span>
+                                    {% endif %}
+                                    {% if week.is_current %}
+                                        <span class="badge bg-success">Отмечена как текущая</span>
+                                    {% endif %}
+                                    {% if week.is_published %}
+                                        <span class="badge bg-info">Опубликовано</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Черновик</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'schedule:teacher_schedule_week' teacher.id forloop.counter0 %}"
+                                       class="btn btn-sm
+                                       {% if week == current_week %}btn-primary
+                                       {% elif week == current_week_by_date %}btn-warning
+                                       {% else %}btn-outline-primary{% endif %}">
+                                        Показать
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>-->
+        {% endif %}
+
+        {% if days %}
+            {% for day_num, lessons in days.items %}
+            <div class="card shedule-card mb-4">
+                <div class="card-header schedule-header bg-secondary text-white">
+                    <h5 class="mb-0">{{ lessons.0.get_day_of_week_display }}</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 schedule-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="px-3">Пара</th>
+                                    <th class="px-3">Время</th>
+                                    <th class="px-3">Дисциплина</th>
+                                    <th class="px-3">Преподаватель</th>
+                                    <th class="px-3">Аудитория</th>
+                                    <th class="px-3">Тип</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson in lessons %}
+                                <tr class="align-middle">
+                                    <td class="px-3 fw-bold fs-5">{{ lesson.time_slot.order }}</td>
+                                    <td class="px-3" nowrap>{{ lesson.time_slot.start_time|time:"H:i" }}-{{ lesson.time_slot.end_time|time:"H:i" }}</td>
+                                    <td class="px-3">
+                                        <strong>{{ lesson.subject.name }}</strong>
+                                        {% if lesson.subject.code %}
+                                        <br><small class="text-muted">Код: {{ lesson.subject.code }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ lesson.group.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ lesson.group.specialization.name }}
+                                            <br>Курс: {{ lesson.group.course }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {{ lesson.classroom.building.name }}, ауд. {{ lesson.classroom.name }}
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ lesson.classroom.get_room_type_display }}
+                                            {% if lesson.classroom.capacity %}
+                                            (до {{ lesson.classroom.capacity }} чел.)
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if lesson.lesson_type == 'lecture' %}bg-primary
+                                            {% elif lesson.lesson_type == 'practice' %}bg-success
+                                            {% elif lesson.lesson_type == 'lab' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ lesson.get_lesson_type_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Статистика -->
+            <div class="row text-center mt-4 g-3">
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ days|length }}</div>
+                        <small>Учебных дней</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ total_lessons }}</div>
+                        <small>Всего пар</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ unique_groups }}</div>
+                        <small>Групп</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ unique_subjects }}</div>
+                        <small>Дисциплин</small>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <h4>📅 Расписание не найдено</h4>
+                <p>Для этого преподавателя на выбранную неделю пока не добавлено занятий.</p>
+                <div class="mt-3">
+                    <a href="/admin/schedule/schedule/add/" class="btn btn-primary">Добавить занятие</a>
+                    <a href="{% url 'main_page' %}" class="btn btn-outline-secondary">Вернуться на главную</a>
+                    
+                    {% if available_weeks %}
+                    <div class="mt-3">
+                        <p>Попробуйте посмотреть другие недели:</p>
+                        <div class="btn-group">
+                            {% for week in available_weeks|slice:":5" %}
+                            <a href="{% url 'schedule:teacher_schedule_week' teacher.id forloop.counter0 %}" 
+                               class="btn btn-sm btn-outline-primary">
+                                Неделя {{ week.week_number }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

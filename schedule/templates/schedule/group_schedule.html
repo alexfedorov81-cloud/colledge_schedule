@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Расписание группы {{ group.name }}{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12">
+        <!-- Заголовок и основная информация -->
+        <div class="card schedule-card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h2 mb-2 fw-bold text-primary">Группа: {{ group.name }}</h1>
+                        <p class="text-muted mb-1 fs-5">
+                            <strong>{{ group.specialization.name }}</strong> | Курс: {{ group.course }}
+                        </p>
+                        {% if current_week %}
+                        <p class="text-muted mb-0">
+                            Неделя {{ current_week.week_number }} ({{ week_start|date:"d.m.Y" }} - {{ week_end|date:"d.m.Y" }})
+                        </p>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'main_page' %}" class="btn btn-outline-primary btn-custom">← Назад</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Навигация по неделям-->
+        <div class="card schedule-card mb-4">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="btn-group week-nav-btn">
+                            {% if has_previous %}
+                            <a href="{% url 'schedule:group_schedule_week' group.id week_offset|add:'-1' %}"
+                               class="btn btn-outline-primary week-nav-btn">← Предыдущая</a>
+                            {% else %}
+                            <button class="btn btn-outline-secondary" disabled>← Предыдущая</button>
+                            {% endif %}
+
+                            {% if current_week_by_date %}
+                            <a href="{% url 'schedule:group_schedule' group.id %}"
+                               class="btn btn-warning week-nav-btn">🎯 Текущая неделя</a>
+                            {% else %}
+                            <a href="{% url 'schedule:group_schedule' group.id %}"
+                               class="btn btn-outline-primary week-nav-btn">Текущая неделя</a>
+                            {% endif %}
+
+                            {% if has_next %}
+                            <a href="{% url 'schedule:group_schedule_week' group.id week_offset|add:'1' %}"
+                               class="btn btn-outline-primary week-nav-btn">Следующая →</a>
+                            {% else %}
+                            <button class="btn btn-outline-secondary" disabled>Следующая →</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="text-muted">
+                            <small>Неделя {{ week_offset|add:"1" }} из {{ total_weeks }}</small>
+                            {% if current_week_by_date and current_week != current_week_by_date %}
+                            <br><small class="text-warning fw-bold">⚠️ Актуально: неделя {{ current_week_by_date.week_number }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!--Быстрый переход по неделям-->
+        {% if available_weeks %}
+        <div class="card schedule-card mb-4">
+            <div class="card-header schedule-header text-white">
+                <h6 class="mb-0 fs-5">📋 Быстрый переход по неделям</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    {% for week in available_weeks %}
+                    <a href="{% url 'schedule:group_schedule_week' group.id forloop.counter0 %}"
+                       class="btn btn-sm {% if week == current_week %}btn-primary{% elif week == current_week_by_date %}btn-warning{% else %}btn-outline-primary{% endif %} week-nav-btn">
+                        Неделя {{ week.week_number }}
+                        {% if week == current_week_by_date %}
+                        <span class="badge bg-light text-dark ms-1">●</span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+
+        <!-- Расписание -->
+        {% if days %}
+            {% for day_num, lessons in days.items %}
+            <div class="card schedule-card mb-4">
+                <div class="card-header schedule-header text-white">
+                    <h5 class="mb-0 fs-5">{{ lessons.0.get_day_of_week_display }}</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 schedule-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th class="px-3">Пара</th>
+                                    <th class="px-3">Время</th>
+                                    <th class="px-3">Дисциплина</th>
+                                    <th class="px-3">Преподаватель</th>
+                                    <th class="px-3">Аудитория</th>
+                                    <th class="px-3">Тип</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson in lessons %}
+                                <tr class="align-middle">
+                                    <td class="px-3 fw-bold fs-5">{{ lesson.time_slot.order }}</td>
+                                    <td class="px-3" nowrap>
+                                        <strong>{{ lesson.time_slot.start_time|time:"H:i" }}-{{ lesson.time_slot.end_time|time:"H:i" }}</strong>
+                                    </td>
+                                    <td class="px-3">
+                                        <div>
+                                            <strong class="fs-6">{{ lesson.subject.name }}</strong>
+                                            {% if lesson.subject.code %}
+                                            <br><small class="text-muted">{{ lesson.subject.code }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="px-3">
+                                        <div>
+                                            <strong>{{ lesson.teacher.get_full_name|default:lesson.teacher.username }}</strong>
+                                            {% if lesson.teacher.teacherprofile.academic_degree %}
+                                            <br><small class="text-muted">{{ lesson.teacher.teacherprofile.academic_degree }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="px-3">
+                                        <div>
+                                            <strong>{{ lesson.classroom.building.name }}, ауд. {{ lesson.classroom.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ lesson.classroom.get_room_type_display }}
+                                                {% if lesson.classroom.capacity %}
+                                                (до {{ lesson.classroom.capacity }} чел.)
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </td>
+                                    <td class="px-3">
+                                        <span class="badge {% if lesson.lesson_type == 'lecture' %}badge-lecture{% elif lesson.lesson_type == 'practice' %}badge-practice{% elif lesson.lesson_type == 'lab' %}badge-lab{% else %}bg-secondary{% endif %} p-2 fs-6">
+                                            {{ lesson.get_lesson_type_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Статистика
+            <div class="row text-center mt-4 g-3">
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ days|length }}</div>
+                        <small>Учебных дней</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ total_lessons }}</div>
+                        <small>Всего пар</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ unique_teachers }}</div>
+                        <small>Преподавателей</small>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="stats-card rounded-3 p-3">
+                        <div class="stats-number">{{ unique_subjects }}</div>
+                        <small>Дисциплин</small>
+                    </div>
+                </div>
+            </div>-->
+        {% else %}
+            <div class="card schedule-card">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <span class="display-1">📅</span>
+                    </div>
+                    <h4 class="text-muted mb-3">Расписание не найдено</h4>
+                    <p class="text-muted mb-4">Для этой группы на выбранную неделю пока не добавлено занятий.</p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="/admin/schedule/schedule/add/" class="btn btn-primary btn-custom">Добавить занятие</a>
+                        <a href="{% url 'main_page' %}" class="btn btn-outline-secondary btn-custom">На главную</a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+
+
+{% endblock %}

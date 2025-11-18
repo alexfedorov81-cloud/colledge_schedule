@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Общее расписание всех групп{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12">
+        <!-- Заголовок и навигация -->
+        <div class="card schedule-card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h2 mb-2 fw-bold text-primary">📊 Общее расписание всех групп</h1>
+                        {% if current_week %}
+                        <p class="text-muted mb-0">
+                            Неделя {{ current_week.week_number }} ({{ week_start|date:"d.m.Y" }} - {{ week_end|date:"d.m.Y" }}) - {{ week_type_display }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'main_page' %}" class="btn btn-outline-primary btn-custom">← Назад</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Навигация по неделям -->
+        <div class="card schedule-card mb-4">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="btn-group week-nav-btn">
+                            {% if has_previous %}
+                            <a href="{% url 'schedule:all_groups_schedule_week' week_offset|add:'-1' %}" class="btn btn-outline-primary">← Предыдущая</a>
+                            {% else %}
+                            <button class="btn btn-outline-secondary" disabled>← Предыдущая</button>
+                            {% endif %}
+
+                            {% if current_week_by_date %}
+                            <a href="{% url 'schedule:all_groups_schedule' %}" class="btn btn-warning">🎯 Текущая неделя</a>
+                            {% else %}
+                            <a href="{% url 'schedule:all_groups_schedule' %}" class="btn btn-outline-primary">Текущая неделя</a>
+                            {% endif %}
+
+                            {% if has_next %}
+                            <a href="{% url 'schedule:all_groups_schedule_week' week_offset|add:'1' %}" class="btn btn-outline-primary">Следующая →</a>
+                            {% else %}
+                            <button class="btn btn-outline-secondary" disabled>Следующая →</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="text-muted">
+                            <small>Неделя {{ week_offset|add:"1" }} из {{ total_weeks }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Большая таблица расписания -->
+        <div class="card schedule-card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0 schedule-table">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th style="min-width: 150px;">Группа / Время</th>
+                                {% for time_slot in time_slots %}
+                                <th class="text-center" style="min-width: 120px;">
+                                    {{ time_slot.order }} пара<br>
+                                    <small>{{ time_slot.start_time|time:"H:i" }}-{{ time_slot.end_time|time:"H:i" }}</small>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day_num, day_name in day_names.items %}
+                            <tr class="table-secondary">
+                                <td colspan="{{ time_slots|length|add:1 }}" class="fw-bold fs-5">
+                                    {{ day_name }}
+                                </td>
+                            </tr>
+                            {% for group in groups %}
+                            <tr>
+                                <td class="fw-bold bg-light" style="min-width: 150px;">
+                                    <a href="{% url 'schedule:group_schedule' group.id %}" class="text-decoration-none">
+                                        {{ group.name }}
+                                    </a>
+                                    {% if group.specialization %}
+                                    <br><small class="text-muted">{{ group.specialization.name }}</small>
+                                    {% endif %}
+                                </td>
+                                {% for time_slot in time_slots %}
+                                <td class="p-2" style="min-height: 80px; vertical-align: top;">
+                                    <!-- ПРОСТОЙ ДОСТУП К ДАННЫМ -->
+                                    {% if table_data and table_data.day_num and table_data.day_num.group.id and table_data.day_num.group.id.time_slot.id %}
+                                        {% for lesson in table_data.day_num.group.id.time_slot.id %}
+                                        <div class="lesson-cell p-1 mb-1 rounded small">
+                                            <div class="fw-bold">{{ lesson.subject.name }}</div>
+                                            <div class="text-muted">{{ lesson.teacher.get_full_name }}</div>
+                                            <div class="text-muted">{{ lesson.classroom.name }}</div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="text-muted text-center py-3">—</div>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.lesson-cell {
+    background: #e8f5e8;
+    border-left: 3px solid #28a745;
+    font-size: 0.85rem;
+}
+.table-responsive {
+    max-height: 80vh;
+    overflow: auto;
+}
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.schedule-table th {
+    position: sticky;
+    top: 0;
+    background: #343a40;
+    z-index: 20;
+}
+.schedule-table td:first-child {
+    position: sticky;
+    left: 0;
+    background: #f8f9fa;
+    z-index: 5;
+}
+</style>
+{% endblock %}
