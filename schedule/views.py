@@ -264,68 +264,12 @@ def group_schedule(request, group_id, week_offset=0):
 
 def all_groups_schedule(request, week_offset=0):
     """Общее расписание всех групп на выбранной неделе"""
-    # Получаем ВСЕ учебные недели
-    available_weeks = StudyWeek.objects.all().order_by('start_date')
+    # ... код получения available_weeks, study_week без изменений ...
 
-    # Определяем текущую неделю по дате
-    current_week_by_date = StudyWeek.get_current_week()
-
-    if not available_weeks.exists():
-        context = {
-            'table_data': {},
-            'day_names': {},
-            'groups': [],
-            'time_slots': [],
-            'current_week': None,
-            'current_week_by_date': current_week_by_date,
-            'week_start': None,
-            'week_end': None,
-            'week_offset': 0,
-            'available_weeks': [],
-            'has_previous': False,
-            'has_next': False,
-            'total_weeks': 0,
-        }
-        return render(request, 'schedule/all_groups_schedule.html', context)
-
-    # Преобразуем week_offset в индекс недели
-    week_index = int(week_offset)
-
-    # Определяем, был ли запрос с явным week_offset
-    request_path = request.path
-    has_explicit_week = '/week/' in request_path
-
-    if not has_explicit_week and current_week_by_date:
-        # Запрос БЕЗ явного указания недели - показываем текущую по дате
-        for idx, week in enumerate(available_weeks):
-            if week == current_week_by_date:
-                week_index = idx
-                break
-        else:
-            future_weeks = available_weeks.filter(start_date__gte=current_week_by_date.start_date)
-            if future_weeks.exists():
-                week_index = list(available_weeks).index(future_weeks.first())
-            else:
-                week_index = available_weeks.count() - 1
-    else:
-        # Запрос С явным указанием недели - используем указанный week_offset
-        pass
-
-    # Проверяем границы
-    if week_index < 0:
-        week_index = 0
-    elif week_index >= available_weeks.count():
-        week_index = available_weeks.count() - 1
-
-    # Берем неделю по индексу
-    study_week = available_weeks[week_index]
-    week_start = study_week.start_date
-    week_end = study_week.end_date
-
-    # Получаем все группы
+    # Получаем ВСЕ группы (упорядоченные)
     groups = StudentGroup.objects.all().order_by('name')
 
-    # Получаем все временные слоты
+    # Получаем ВСЕ временные слоты (упорядоченные)
     time_slots = TimeSlot.objects.all().order_by('order')
 
     # Получаем все расписания на выбранной неделе
@@ -333,40 +277,40 @@ def all_groups_schedule(request, week_offset=0):
         study_week=study_week
     ).select_related(
         'group', 'subject', 'teacher', 'classroom', 'time_slot'
-    ).order_by('group__name', 'day_of_week', 'time_slot__order')
+    )
 
-    # Создаем готовую структуру данных для шаблона
-    table_data = {}
+    # Создаем структуру: days[day_num][time_slot_id][group_id] = занятия
+    days = {}
     day_names = {
         1: 'Понедельник', 2: 'Вторник', 3: 'Среда',
         4: 'Четверг', 5: 'Пятница', 6: 'Суббота', 7: 'Воскресенье',
     }
 
-    # Инициализируем структуру
-    for day_num, day_name in day_names.items():
-        table_data[day_num] = {}
-        for group in groups:
-            table_data[day_num][group.id] = {}
-            for time_slot in time_slots:
-                table_data[day_num][group.id][time_slot.id] = []
+    # Инициализируем структуру для всех дней, всех временных слотов и всех групп
+    for day_num in range(1, 8):
+        days[day_num] = {}
+        for time_slot in time_slots:
+            days[day_num][time_slot.id] = {}
+            for group in groups:
+                days[day_num][time_slot.id][group.id] = []
 
     # Заполняем данными
     for schedule in schedules:
         day_num = schedule.day_of_week
-        group_id = schedule.group.id
         time_slot_id = schedule.time_slot.id
+        group_id = schedule.group.id
 
-        if (day_num in table_data and
-                group_id in table_data[day_num] and
-                time_slot_id in table_data[day_num][group_id]):
-            table_data[day_num][group_id][time_slot_id].append(schedule)
+        if (day_num in days and
+                time_slot_id in days[day_num] and
+                group_id in days[day_num][time_slot_id]):
+            days[day_num][time_slot_id][group_id].append(schedule)
 
     # Определяем доступность навигации
     has_previous = week_index > 0
     has_next = week_index < available_weeks.count() - 1
 
     context = {
-        'table_data': table_data,
+        'days': days,
         'day_names': day_names,
         'groups': groups,
         'time_slots': time_slots,

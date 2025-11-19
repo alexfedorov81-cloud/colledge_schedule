@@ -51,6 +51,7 @@
                     <div class="col-md-4 text-md-end">
                         <div class="text-muted">
                             <small>Неделя {{ week_offset|add:"1" }} из {{ total_weeks }}</small>
+                            <br><small>Групп: {{ groups|length }}, Пар: {{ time_slots|length }}</small>
                         </div>
                     </div>
                 </div>
@@ -64,37 +65,45 @@
                     <table class="table table-bordered mb-0 schedule-table">
                         <thead class="table-dark sticky-top">
                             <tr>
-                                <th style="min-width: 150px;">Группа / Время</th>
-                                {% for time_slot in time_slots %}
+                                <th style="min-width: 80px;">Пара / Группа</th>
+                                <!-- ЗАГОЛОВКИ - ВСЕ ГРУППЫ -->
+                                {% for group in groups %}
                                 <th class="text-center" style="min-width: 120px;">
-                                    {{ time_slot.order }} пара<br>
-                                    <small>{{ time_slot.start_time|time:"H:i" }}-{{ time_slot.end_time|time:"H:i" }}</small>
+                                    {{ group.name }}
+                                    {% if group.specialization %}
+                                    <br><small class="text-muted">{{ group.specialization.name }}</small>
+                                    {% endif %}
                                 </th>
                                 {% endfor %}
                             </tr>
                         </thead>
                         <tbody>
+                            <!-- СТРОКИ - ВСЕ ПАРЫ -->
                             {% for day_num, day_name in day_names.items %}
-                            <tr class="table-secondary">
-                                <td colspan="{{ time_slots|length|add:1 }}" class="fw-bold fs-5">
-                                    {{ day_name }}
+                            <!-- Заголовок дня -->
+                            <tr class="table-info">
+                                <td colspan="{{ groups|length|add:1 }}" class="fw-bold fs-5 text-center">
+                                    📅 {{ day_name }}
                                 </td>
                             </tr>
-                            {% for group in groups %}
+
+                            <!-- Строки для каждой пары этого дня -->
+                            {% for time_slot in time_slots %}
                             <tr>
-                                <td class="fw-bold bg-light" style="min-width: 150px;">
-                                    <a href="{% url 'schedule:group_schedule' group.id %}" class="text-decoration-none">
-                                        {{ group.name }}
-                                    </a>
-                                    {% if group.specialization %}
-                                    <br><small class="text-muted">{{ group.specialization.name }}</small>
-                                    {% endif %}
+                                <!-- Ячейка с номером пары и временем -->
+                                <td class="fw-bold bg-light text-center" style="min-width: 80px;">
+                                    <div>{{ time_slot.order }} пара</div>
+                                    <small class="text-muted">
+                                        {{ time_slot.start_time|time:"H:i" }}<br>
+                                        {{ time_slot.end_time|time:"H:i" }}
+                                    </small>
                                 </td>
-                                {% for time_slot in time_slots %}
-                                <td class="p-2" style="min-height: 80px; vertical-align: top;">
-                                    <!-- ПРОСТОЙ ДОСТУП К ДАННЫМ -->
-                                    {% if table_data and table_data.day_num and table_data.day_num.group.id and table_data.day_num.group.id.time_slot.id %}
-                                        {% for lesson in table_data.day_num.group.id.time_slot.id %}
+
+                                <!-- Ячейки для каждой группы -->
+                                {% for group in groups %}
+                                <td class="p-1" style="min-height: 60px; vertical-align: top;">
+                                    {% if days and days.day_num and days.day_num.time_slot.id and days.day_num.time_slot.id.group.id %}
+                                        {% for lesson in days.day_num.time_slot.id.group.id %}
                                         <div class="lesson-cell p-1 mb-1 rounded small">
                                             <div class="fw-bold">{{ lesson.subject.name }}</div>
                                             <div class="text-muted">{{ lesson.teacher.get_full_name }}</div>
@@ -102,7 +111,7 @@
                                         </div>
                                         {% endfor %}
                                     {% else %}
-                                        <div class="text-muted text-center py-3">—</div>
+                                        <div class="text-muted text-center py-2">—</div>
                                     {% endif %}
                                 </td>
                                 {% endfor %}
@@ -121,28 +130,38 @@
 .lesson-cell {
     background: #e8f5e8;
     border-left: 3px solid #28a745;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    line-height: 1.2;
 }
+
 .table-responsive {
     max-height: 80vh;
     overflow: auto;
 }
+
 .sticky-top {
     position: sticky;
     top: 0;
     z-index: 10;
 }
+
 .schedule-table th {
     position: sticky;
     top: 0;
     background: #343a40;
     z-index: 20;
 }
+
 .schedule-table td:first-child {
     position: sticky;
     left: 0;
     background: #f8f9fa;
     z-index: 5;
+    border-right: 2px solid #dee2e6;
+}
+
+.table-info {
+    background-color: #d1ecf1 !important;
 }
 </style>
 {% endblock %}
