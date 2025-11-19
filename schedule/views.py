@@ -264,7 +264,63 @@ def group_schedule(request, group_id, week_offset=0):
 
 def all_groups_schedule(request, week_offset=0):
     """Общее расписание всех групп на выбранной неделе"""
-    # ... код получения available_weeks, study_week без изменений ...
+    # Получаем ВСЕ учебные недели
+    available_weeks = StudyWeek.objects.all().order_by('start_date')
+
+    # Определяем текущую неделю по дате
+    current_week_by_date = StudyWeek.get_current_week()
+
+    if not available_weeks.exists():
+        context = {
+            'days': {},
+            'day_names': {},
+            'groups': [],
+            'time_slots': [],
+            'current_week': None,
+            'current_week_by_date': current_week_by_date,
+            'week_start': None,
+            'week_end': None,
+            'week_offset': 0,
+            'available_weeks': [],
+            'has_previous': False,
+            'has_next': False,
+            'total_weeks': 0,
+        }
+        return render(request, 'schedule/all_groups_schedule.html', context)
+
+    # Преобразуем week_offset в индекс недели
+    week_index = int(week_offset)
+
+    # Определяем, был ли запрос с явным week_offset
+    request_path = request.path
+    has_explicit_week = '/week/' in request_path
+
+    if not has_explicit_week and current_week_by_date:
+        # Запрос БЕЗ явного указания недели - показываем текущую по дате
+        for idx, week in enumerate(available_weeks):
+            if week == current_week_by_date:
+                week_index = idx
+                break
+        else:
+            future_weeks = available_weeks.filter(start_date__gte=current_week_by_date.start_date)
+            if future_weeks.exists():
+                week_index = list(available_weeks).index(future_weeks.first())
+            else:
+                week_index = available_weeks.count() - 1
+    else:
+        # Запрос С явным указанием недели - используем указанный week_offset
+        pass
+
+    # Проверяем границы
+    if week_index < 0:
+        week_index = 0
+    elif week_index >= available_weeks.count():
+        week_index = available_weeks.count() - 1
+
+    # Берем неделю по индексу
+    study_week = available_weeks[week_index]
+    week_start = study_week.start_date
+    week_end = study_week.end_date
 
     # Получаем ВСЕ группы (упорядоченные)
     groups = StudentGroup.objects.all().order_by('name')
